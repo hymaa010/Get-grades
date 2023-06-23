@@ -33,7 +33,7 @@ AppleWebKit = f'{math.floor(50 * random()) + 500}.{math.floor(99 * random())}'
 Chrome = f'{math.floor(20 * random()) + 90}.{math.floor(9 * random())}.{math.floor(9 * random())}.{math.floor(9 * random())}'
 ENG_URLs = {'Main': 'https://eng.asu.edu.eg/', 'Login': 'https://eng.asu.edu.eg/public/login', 'Dashboard': 'https://eng.asu.edu.eg/public/dashboard', 'Mycourses': 'https://eng.asu.edu.eg/public/dashboard/my_courses'}
 ENG_headers = {'User-Agent': f'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/{AppleWebKit} (KHTML, like Gecko) Chrome/{Chrome} Safari/{AppleWebKit}', 'Content-Type': 'application/x-www-form-urlencoded'}
-Form_url = 'https://docs.google.com/forms/d/e/1FAIpQLSe-14O0Sey9zhDw4EKDAbjyifmcrdt8ZihH6vyezozM_Gc6Iw/formResponse'
+Form_url = '*'
 
 # For color in windos cmd
 if platform.system() == 'Windows':
