@@ -1,10 +1,11 @@
+#!/bin/python
 import asyncio
 from asyncio import create_task
 import token
 import aiohttp
 from bs4 import BeautifulSoup
 
-from json import dumps, loads
+from json import dumps, loads, load
 from hashlib import md5 
 
 from filecmp import cmp
@@ -473,6 +474,16 @@ async def store_and_fill(Grades_info_task, file, session, email, share_grade):
             else:
                 print(Fore.CYAN + "Info: Not sharing grade, Please share next time")
                 break
+# Compares if to files are the same json
+def compare_backup(file1, file2):
+    with open(file1, 'r') as json1:
+        grades1 = load(json1)
+    with open(file2, 'r') as json2:
+        grades2 = load(json2)
+    if grades1 == grades2:
+        return True
+    else:
+        return False
 
 # Handels tasks and orders calling of functions
 async def get_grades(session, file, email, password, share_grade, use_backup_links):
@@ -537,7 +548,8 @@ async def main(session):
             os.popen(f'copy {file_name} {backup_name}').read()
 
     # Checks for changes if found gives an alert box
-    if not cmp(file_name, backup_name):
+    
+    if not compare_backup(file_name, backup_name):
         print(Fore.YELLOW + 'Warning: Changes were made to grades!!!')  
         root = tk.Tk()
         root.withdraw()
