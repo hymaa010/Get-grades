@@ -5,7 +5,7 @@ import token
 import aiohttp
 from bs4 import BeautifulSoup
 
-from json import dumps, loads, load
+#from json import dumps, loads, load
 from hashlib import md5 
 
 from filecmp import cmp
@@ -23,14 +23,16 @@ import platform
 from random import random, seed
 import math
 
+from toml import dumps, loads, load
+
 runtime_start = time.perf_counter()
 
 seed()
 
-links_name = 'links.json'
-links_backup_name = 'links_backup.json'
-file_name = 'grade.json'
-backup_name = 'grade_backup.json'
+links_name = 'links.toml'
+links_backup_name = 'links_backup.toml'
+file_name = 'grade.toml'
+backup_name = 'grade_backup.toml'
 user_info_name = 'user_info.txt'
 nLogins = 1 
 nGotgrades = 1
@@ -400,7 +402,7 @@ async def return_Grads_Info(ENG_task):
     for term in terms:
         elements = term.select('td')
         Old[elements[0].text.replace('\r', '').replace('\n', '').replace('\t', '') + ' ' + elements[1].text.replace('\r', '').replace('\n', '').replace('\t', '')] = {'Level': elements[3].text.replace('\r', '').replace('\n', '').replace('\t', ''), 'Term GPA / Hours': ' '.join(elements[4].text.replace('\r', '').replace('\n', '').replace('\t', '').split()), 'Cumulative GPA / Hours': ' '.join(elements[5].text.replace('\r', '').replace('\n', '').replace('\t', '').split()), 'Passed Hours':  elements[6].text.replace('\r', '').replace('\n', '').replace('\t', '')[0:-1]}
-    print(Fore.CYAN + 'Info: only shoing current semester for more see grades.json file')
+    print(Fore.CYAN + 'Info: only shoing current semester for more see grades.toml file')
     return (Grades_info , Old)
 
 # Stores given dictionary in given file and returns if dict is empty and calls fill_form if needed
@@ -596,10 +598,12 @@ async def main_caller():
             print(Fore.WHITE + f'Info: Current time: {time.ctime(current_time)} run number {nGotgrades}')
             
             # Catching errors and printing them
-            try: 
-                await main(session)
-                if mode_name == 'infinity': 
-                    mode_name = 'normal'
+             
+            await main(session)
+            if mode_name == 'infinity': 
+                mode_name = 'normal'
+            try:
+                print(1)
             except (KeyboardInterrupt, EOFError):
                 sys.exit(130)
             except Exception as e:
@@ -647,5 +651,10 @@ async def main_caller():
 asyncio.run(main_caller())
 print(Fore.WHITE + f'Info: Total runtime is {round(time.perf_counter() - runtime_start, 3)}s')
 
+# TODO: add fast mode is atumatically off during change of season
+# TODO: store files in tomel 
+# TODO: add course name for veiowng
+# TODO: add full scan
 # TODO: add choose   
+# TODO: use both md5 hash and sha 256
 # TODO: add check updates
