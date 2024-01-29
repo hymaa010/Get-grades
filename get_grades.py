@@ -508,6 +508,9 @@ print(Fore.WHITE + f'Info: Total runtime is {round(time.perf_counter() - runtime
 # TODO: test everything
 
 
+
+# TODO: Update init.md
+
 # TODO: use both md5 hash and sha 256
 
 # TODO: add choose
