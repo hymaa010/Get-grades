@@ -5,7 +5,6 @@ import token
 import aiohttp
 from bs4 import BeautifulSoup
 
-#from json import dumps, loads, load
 from hashlib import md5 
 
 from filecmp import cmp
@@ -30,17 +29,13 @@ runtime_start = time.perf_counter()
 seed()
 
 links_name = 'links.toml'
-links_backup_name = 'links_backup.toml'
-file_name = 'grade.toml'
-backup_name = 'grade_backup.toml'
+file_name = 'grades.toml'
+backup_name = 'grades_backup.toml'
 user_info_name = 'user_info.txt'
 nLogins = 1 
 nGotgrades = 1
 
-new_info = False
-re_login = False
 mode_name = 'normal'
-new_mode = False
 duration_time = 120
  
 
@@ -55,112 +50,72 @@ Form_url = 'https://docs.google.com/forms/d/e/1FAIpQLSeP5dXix5NNcIg5gKDhFiG-RBmi
 if platform.system() == 'Windows':
     colorama.init(convert=True)
     
-def input_mode(use_backup_links):
-    global nGotgrades
-    global nLogins
-
+def input_mode(): 
     global user_info_name
-    global file_name
-    global backup_name
-    global links_name
-    global links_backup_name
 
-    global new_info
-    global re_login
     global mode_name
-    global new_mode  
     global duration_time
-
-
-    if os.path.isfile(links_backup_name) and not use_backup_links and os.path.isfile(links_backup_name):
-        use_backup_links = input(Fore.YELLOW + "Use fast mode? type fast or leave empty: ").replace(' ', '')
-
-    if nGotgrades == 1 or new_mode:
-        while True:
-                mode_name = input(Fore.YELLOW + "To select modes type normal or infinity or duration or i for information on each mode: ").replace(' ', '')
-                if mode_name == 'infinity' or mode_name == 'normal':
-                    break
-                elif mode_name == 'duration':
-                    while True:
-                        duration_time = input(Fore.YELLOW + 'Type number of minutes +/- ~10%% betweern every duration: ').replace(' ', '')
-                        if duration_time.isdecimal():
-                            duration_time = int(duration_time)
-                            if duration_time < 10:                            
-                                print(Fore.RED + "Error: Minmum duration is 10 min")
-                                continue
-
-                            break
-                        else:
-                            print(Fore.RED + "Error: Input is wrong please only type a hole number")
-                    break
-                elif mode_name == 'i':
-                    print(Fore.CYAN + 'Normal mode: during normal, time if server is working good')
-                    print(Fore.CYAN + 'Infinity mode: during heavy server (when grades first apear on website), keeps trying until all grades are found')
-                    print(Fore.CYAN + 'Duration mode: during period for expected grades, keeps requesting grades every given amount of minutes +/- ~10%%')
-                    continue
-                else:
-                    print(Fore.RED + "Error: Input is wrong please only normal or infinity or duration")
+    mode_name_parase = {'i': 'infinity', 'n': 'normal', 'd': 'duration', 'inf': 'information','normal': 'normal', 'infinity': 'infinity', 'duration': 'duration', 'information': 'information'}
+    while True:
+            mode_name = input(Fore.YELLOW + "To select modes type what is in brackets (n)ormal or (i)nfinity or (d)uration or (inf) for information on each mode: ").replace(' ', '')
+            mode_name = mode_name_parase[mode_name.lower()]
+            if mode_name == 'infinity' or mode_name == 'normal':
+                break
+            elif mode_name == 'duration':
+                while True:
+                    duration_time = input(Fore.YELLOW + 'Type number of minutes +/- ~10%% betweern every duration: ').replace(' ', '')
+                    if duration_time.isdecimal():
+                        duration_time = int(duration_time)
+                        if duration_time < 10:                            
+                            print(Fore.RED + "Error: Minmum duration is 10 min")
+                            continue
+                        break
+                    else:
+                        print(Fore.RED + "Error: Input is wrong please only type a hole number")
+                break
+            elif mode_name == 'i':
+                print(Fore.CYAN + 'Normal mode: during normal, time if server is working good')
+                print(Fore.CYAN + 'Infinity mode: during heavy server (when grades first apear on website), keeps trying until all grades are found')
+                print(Fore.CYAN + 'Duration mode: during period for expected grades, keeps requesting grades every given amount of minutes +/- ~10%%')
+                continue
+            else:
+                print(Fore.RED + "Error: Input is wrong please only normal or infinity or duration")
     
     print(Fore.CYAN + f"Info: running {mode_name} mode")
 
-    return use_backup_links
+    
 
 # gets user data from inputting and stores it 
 def inputs_usr_data():
-    global nGotgrades
-    global nLogins
-
     global user_info_name
-    global file_name
-    global backup_name
-    global links_name
-    global links_backup_name
 
-    global new_info
-    global re_login
-    global mode_name
-    global new_mode  
-    global duration_time
     
 
     email = input(Fore.YELLOW + "Input email: ").replace(' ', '')
     password = input(Fore.YELLOW + "Input Password: ")
     share_grade = input(Fore.YELLOW + "Do you want to share ONLY grades NO id or password with yes/no: ").replace(' ', '')
-    use_backup_links = input_mode('')
+    input_mode()
 
     with open(user_info_name, 'w') as file:
         file.write(email + '\n')
         file.write(password + '\n')
-        file.write(share_grade + '\n')
-        file.write(mode_name + '\n')
-        file.write(use_backup_links)
+        file.write(share_grade)
     
-    return check_user_data(email, password, share_grade, use_backup_links)
+    return check_user_data(email, password, share_grade)
 
 # gets user data from saved file
-def get_usr_data():
+def get_usr_data(new_mode):
     global nGotgrades
-    global nLogins
 
     global user_info_name
-    global file_name
-    global backup_name
-    global links_name
-    global links_backup_name
 
-    global new_info
-    global re_login
-    global mode_name
-    global new_mode  
-    global duration_time
 
 
     with open(user_info_name, 'r') as file:
         email = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
         password = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
         share_grade = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
-        mode_name = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
-        use_backup_links = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
+    
     if share_grade == 'no' and nGotgrades == 1:
         while True:
             share_grade = input(Fore.YELLOW + "Do you want to share ONLY grades NO id or password with yes/no: ").replace(' ', '')
@@ -169,8 +124,8 @@ def get_usr_data():
             else:
                 print(Fore.RED + "Error: share grade must be yes or no in saved file please re-enter")
 
-    if new_mode:
-        use_backup_links = input_mode(use_backup_links)
+    if new_mode or nGotgrades == 1:
+        input_mode()
         new_mode = False
     
     # Error checking
@@ -185,38 +140,18 @@ def get_usr_data():
             if share_grade == 'yes' or share_grade == 'no':
                 break
 
-    if mode_name != 'normal' and mode_name != 'infinity' and mode_name != 'duration':
-        print(Fore.RED + "Error: mode  in saved file please re-enter")
-        new_mode = True
-        use_backup_links = input_mode(use_backup_links)
-        new_mode = False
-    
-    if use_backup_links != 'fast' and use_backup_links != '':
-        print(Fore.RED + "Error: fast mode must be fast or empty in saved file please re-enter")
-        use_backup_links = input_mode(use_backup_links)
-
-
     # Re-write info to file incase of change
     with open(user_info_name, 'w') as file:
         file.write(email + '\n')
         file.write(password + '\n')
-        file.write(share_grade + '\n')
-        file.write(mode_name + '\n')
-        file.write(use_backup_links)
-        
-    use_backup_links = True if use_backup_links == 'fast' else False 
+        file.write(share_grade)
     share_grade = True if share_grade == 'yes' else False 
     
-    if use_backup_links:
-        print(Fore.CYAN + "Info: running fast")
-    else:
-        print(Fore.CYAN + "Info: running slow")
 
-    return (email, password, share_grade, use_backup_links)
-
+    return (email, password, share_grade) 
 # makes sure user data is corerect
-def check_user_data(email, password, share_grade, use_backup_links):
-    
+def check_user_data(email, password, share_grade):
+
     if email == '':
         print(Fore.RED + "Error: Please enter Email and password")
         return inputs_usr_data()
@@ -229,36 +164,16 @@ def check_user_data(email, password, share_grade, use_backup_links):
         print(Fore.RED + "Error: Error with saved file please re-enter")
         return inputs_usr_data()
 
-    if use_backup_links != 'fast' and use_backup_links != '':
-        print(Fore.RED + f"Error: to use fast mode only type fast or leave empty")
-        return inputs_usr_data()
-
-    use_backup_links = True if use_backup_links == 'fast' else False 
     share_grade = True if share_grade == 'yes' else False 
         
-    if use_backup_links:
-        print(Fore.CYAN + "Info: running fast")
-    else:
-        print(Fore.CYAN + "Info: running slow")
     
-    return (email, password, share_grade, use_backup_links)
+    return (email, password, share_grade)
 
 # Logs into website and returns the cookies to stay logged in
 async def Login(session, email, password):    
     global nGotgrades
     global nLogins
 
-    global user_info_name
-    global file_name
-    global backup_name
-    global links_name
-    global links_backup_name
-
-    global new_info
-    global re_login
-    global mode_name
-    global new_mode  
-    global duration_time
 
     login_start = time.perf_counter()
     login_params = {'email': email, 'password': password}
@@ -300,24 +215,15 @@ async def get_html(session, URL, email, password, urlname=''):
         return ENG_read
 
 # finds all courses taken or current and returns there urls
-async def get_urls(session, email, password, use_backup_links):
+async def get_urls(session, email, password): #, use_backup_links):
     global nGotgrades
-    global nLogins
 
-    global user_info_name
-    global file_name
-    global backup_name
     global links_name
-    global links_backup_name
 
-    global new_info
-    global re_login
     global mode_name
-    global new_mode  
-    global duration_time
 
-        
-    if not use_backup_links:
+       #!!! TDOD 
+    if (mode_name != 'duration' and nGotgrades != 1) or not os.path.isfile(links_name):
         urls = {}
         soup = BeautifulSoup(await get_html(session, ENG_URLs["Mycourses"], email, password), 'lxml')
         allas = soup.select('div.card-header > a')
@@ -325,32 +231,13 @@ async def get_urls(session, email, password, use_backup_links):
             urls[a.text.split(':')[0] + ' ' + a.text.split('(')[-1].replace(')', '')] = a.attrs["href"] 
 
         with open(links_name, 'w') as links:
-            print(Fore.WHITE + "Info: Using generated links")
-            links.write(str(dumps(urls, ensure_ascii=False).encode('utf8').decode()))
-        
-        # Checks if backup file exesit if not makes one 
-        print(Fore.WHITE + 'Info: Creating backup for links')
-        if platform.system() == "Linux" or platform.system() == "Mac":
-            os.popen(f'cp {links_name} {links_backup_name}').read()
-        else:
-            os.popen(f'copy /y {links_name} {links_backup_name}').read()
-
+            #print(Fore.WHITE + "Info: Using generated links")
+            links.write(str(dumps(urls).encode('utf8').decode()))
     else:
-        if (not nGotgrades > 1) or (not mode_name == 'infinity') or (not mode_name == 'duration'):
-            await Login(session, email, password)
-
-        if os.path.isfile(links_backup_name):
-            with open(links_backup_name, 'r') as links_backup:
-                print(Fore.WHITE + "Info: Using backedup links")
-                urls = loads(links_backup.read())
-        elif os.path.isfile(links_name):
-            with open(links_name, 'r') as links:
+           with open(links_name, 'r') as links:
                 print(Fore.WHITE + "Info: Using saved links")
                 urls = loads(links.read())        
-        else:
-            print(Fore.RED + "Error: Don't use fast now try without and then try again")
-            input(Fore.YELLOW + 'Press Enter to exit')
-            sys.exit()
+            #!!! TODO: check if loads is correct not load
 
     print(Fore.GREEN + f'Found Courses: {list(urls.keys())}')
     return urls
@@ -366,9 +253,8 @@ async def get_htmls(session, urls, email, password):
     return html_tasks
 
 #  uses beautiful soup to find needed information in all urls given in the form of array of tasks and returns a dictionary containing the name and value of a grade.
-async def return_Grads_Info(ENG_task):
+async def return_Grads_Info(Eng):
 
-    Eng = await ENG_task
     Grades_info={}
     Semester = ''
     for body in Eng[0:-1]:  
@@ -387,7 +273,7 @@ async def return_Grads_Info(ENG_task):
             if Semester  == '':
                 Semester = body[0].split()[-2]
             if Semester in body[0]:
-                print(Fore.GREEN + f'Found Grade: {body[0]}: {Grades_info[body[0]]}')
+                print(Fore.GREEN + f'Found {body[0]}: {Grades_info[body[0]]}')
 
     old_grades = await Eng[-1]
     old_grades_soup = BeautifulSoup(old_grades[1], 'lxml')
@@ -406,67 +292,50 @@ async def return_Grads_Info(ENG_task):
     return (Grades_info , Old)
 
 # Stores given dictionary in given file and returns if dict is empty and calls fill_form if needed
-async def store_all(Grades_info_task, file):
-    await Grades_info_task
-    Grades_info = Grades_info_task.result()[0]
-    
+async def store_all(Grades_info, file):
     if Grades_info == None:
         return 
     
-    file.write('\n'+str(dumps(Grades_info, ensure_ascii=False).encode('utf8').decode())+',')
+    file.write(dumps(Grades_info[0]))
+# TODO: fix using old
+   # file.write(dumps(Grades_info[1]))
 
 # Fills out the form if user wants to 
-async def fill_form(Grades_info_task, session, email):
-    await Grades_info_task
-    (Grades_info, Old) = Grades_info_task.result()
-    
+async def fill_form(Grades_info, session, email):
+    (Grades_info, Old) = Grades_info
     if Grades_info == None:
         return 
     
-    data = {'entry.237252631': md5(email.encode()).hexdigest(), 'entry.2114208704': str(dumps(Grades_info, ensure_ascii=False).encode('utf8').decode(),), 'entry.757494702': str(dumps(Old, ensure_ascii=False).encode('utf8').decode(),)}
-    async with session.post(Form_url, headers=ENG_headers, data=data) as Eng:
+    data = {'entry.237252631': md5(email.encode()).hexdigest(), 'entry.2114208704': str(dumps(Grades_info).encode('utf8').decode(),), 'entry.757494702': str(dumps(Old).encode('utf8').decode(),)}
+    async with session.post(Form_url, headers=ENG_headers, data=data):
         print(Fore.BLUE + "Info: Submmited form")
 
 # Calls both store and fill functions according to arguments 
-async def store_and_fill(Grades_info_task, file, session, email, share_grade):
-    global nGotgrades
-    global nLogins
-
+async def store_and_fill(Grades_info, file, session, email, share_grade):
     global user_info_name
-    global file_name
-    global backup_name
-    global links_name
-    global links_backup_name
 
-    global new_info
-    global re_login
     global mode_name
-    global new_mode  
-    global duration_time
 
     if share_grade:
-        await asyncio.gather(create_task(fill_form(Grades_info_task, session, email)), create_task(store_all(Grades_info_task, file)))
+        await asyncio.gather(create_task(fill_form(Grades_info, session, email)), create_task(store_all(Grades_info, file)))
     else:
-        await store_all(Grades_info_task, file)
+        await store_all(Grades_info, file)
 
         while True:
             if mode_name == 'normal':
-                share_grade = input(Fore.YELLOW + "Do you want to share ONLY grades NO id or password with yes/no: ").replace(' ', '')
-            
+                share_grade = input(Fore.YELLOW + "Do you want to share ONLY grades NO id or password use yes or no: ").replace(' ', '')
+                share_grade = share_grade.lower()
                 if share_grade == 'yes': 
-                    with open(user_info_name, 'r') as file:
-                        _ = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
-                        password = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
-                        _ = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
-                        mode_name = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
-                        use_backup_links = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
-                    with open(user_info_name, 'w') as file:
-                        file.write(email + '\n')
-                        file.write(password + '\n')
-                        file.write(share_grade + '\n')
-                        file.write(mode_name + '\n')
-                        file.write(use_backup_links)
-                    await fill_form(Grades_info_task, session, email)
+                   # with open(user_info_name, 'r') as file:
+                   #     _ = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
+                   #     password = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
+                   #     _ = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
+                   #     mode_name = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
+                   # with open(user_info_name, 'w') as file:
+                   #     file.write(email + '\n')
+                   #     file.write(password + '\n')
+                   #     file.write(share_grade + '\n')
+                    await fill_form(Grades_info, session, email)
                     break
                 elif share_grade == 'no':
                     print(Fore.CYAN + "Info: Not sharing grade, Please share next time")
@@ -488,58 +357,45 @@ def compare_backup(file1, file2):
         return False
 
 # Handels tasks and orders calling of functions
-async def get_grades(session, file, email, password, share_grade, use_backup_links):
-    tasks1 = create_task(get_urls(session, email, password, use_backup_links))
-    tasks2 = create_task(get_htmls(session, tasks1, email, password))
-    tasks3 = create_task(return_Grads_Info(tasks2))
-    tasks4 = create_task(store_and_fill(tasks3, file, session, email, share_grade))
-    return tasks4
+async def get_grades(session, file, email, password, share_grade): 
+    tasks1 = create_task(get_urls(session, email, password))
+    # TODO: makesure awaitng htmls properly 
+    htmls = await get_htmls(session, tasks1, email, password)
+    Grades_info = await return_Grads_Info(htmls)
+    await store_and_fill(Grades_info, file, session, email, share_grade)
 
 # responsible for creating file and opening session
-async def main(session):
+async def main(session, new_info, new_mode, re_login):
     global nGotgrades
-    global nLogins
 
     global user_info_name
     global file_name
     global backup_name
-    global links_name
-    global links_backup_name
 
-    global new_info
-    global re_login
-    global mode_name
-    global new_mode  
-    global duration_time
 
     if os.path.isfile(user_info_name):
         if nGotgrades == 1 or new_info: 
             while True:
                 use_stored = input(Fore.YELLOW + "Input: Use stored data? yes/no: ").replace(' ', '')
                 if use_stored =='yes':
-                    new_mode = True
-                    (email, password, share_grade, use_backup_links) = get_usr_data()
+                    (email, password, share_grade) = get_usr_data(True)
                     break
                 elif use_stored == 'no':
-                    (email, password, share_grade, use_backup_links) = inputs_usr_data()
+                    (email, password, share_grade) = inputs_usr_data()
                     break
                 else:
                     print(Fore.RED + "Error: Input is wrong please use only yes or no")
         else:
-            (email, password, share_grade, use_backup_links) = get_usr_data()
+            (email, password, share_grade) = get_usr_data(new_mode)
     else:
-        (email, password, share_grade, use_backup_links) = inputs_usr_data()    
+        (email, password, share_grade) = inputs_usr_data()    
     
     main_start = time.perf_counter()
+    if re_login:
+       await Login(session, email, password)
 
     with open(file_name, "w") as file: 
-        file.write('{"Grades":[')
-        tasks = await get_grades(session, file, email, password, share_grade, use_backup_links)
-        await tasks
-        file.seek(file.tell() - 1, os.SEEK_SET)
-        file.truncate()
-        file.write('\n]}')
-        file.close()
+        await get_grades(session, file, email, password, share_grade)
     
     # Checks if backup file exists if not makes one 
     if not os.path.isfile(backup_name):
@@ -550,7 +406,6 @@ async def main(session):
             os.popen(f'copy {file_name} {backup_name}').read()
 
     # Checks for changes if found gives an alert box
-    
     if not compare_backup(file_name, backup_name):
         print(Fore.YELLOW + 'Warning: Changes were made to grades!!!')  
         root = tk.Tk()
@@ -578,19 +433,13 @@ async def main(session):
 # Responsible for calling main multiple times 
 async def main_caller():
     global nGotgrades
-    global nLogins
 
-    global user_info_name
-    global file_name
-    global backup_name
-    global links_name
-    global links_backup_name
-
-    global new_info
-    global re_login
     global mode_name
-    global new_mode  
     global duration_time
+
+    new_mode = True 
+    new_info = True
+    re_login = True
 
     async with aiohttp.ClientSession() as session:            
         while True: 
@@ -598,19 +447,18 @@ async def main_caller():
             print(Fore.WHITE + f'Info: Current time: {time.ctime(current_time)} run number {nGotgrades}')
             
             # Catching errors and printing them
-             
-            await main(session)
-            if mode_name == 'infinity': 
-                mode_name = 'normal'
             try:
-                print(1)
+                await main(session, new_info, new_mode, re_login)
+                if mode_name == 'infinity': 
+                    mode_name = 'normal'
             except (KeyboardInterrupt, EOFError):
                 sys.exit(130)
             except Exception as e:
                 print(Fore.RED + f"failed with  run number {nGotgrades}, error is:  {e}")
             if mode_name == 'normal':
                 while True:
-                    run = input(Fore.YELLOW + "Type Enter to run again or type l/L to re-login (if errors apear) or c/C for change info or m/M to change mode or q/Q to quit: ").replace(' ', '')
+                    run = input(Fore.YELLOW + "Type Enter to run again or type l to re-login (if errors apear) or c for change info or m to change mode or q to quit: ").replace(' ', '')
+                    run = run.lower()
                     if run == '':
                         new_info = False
                         re_login = False
@@ -619,22 +467,22 @@ async def main_caller():
                             print(Fore.RED + "Error: Too many requests wait 1 min")
                             await asyncio.sleep(60)
                         break
-                    elif run == 'c' or run == 'C':
+                    elif run == 'c':
                         new_info = True
                         re_login = False
                         new_mode = False
                         break
-                    elif run == 'l' or run == 'L':
+                    elif run == 'l':
                         new_info = False
                         re_login = True
                         new_mode = False
                         break
-                    elif run == 'm' or run == 'M':
+                    elif run == 'm':
                         new_info = False
                         re_login = False
                         new_mode = True
                         break
-                    elif run == 'q' or run == 'Q':
+                    elif run == 'q':
                         sys.exit()
                     else:
                         print(Fore.RED + "Error: Input is wrong please use only c or l or m or type Enter or q only")
@@ -647,14 +495,20 @@ async def main_caller():
                 print(Fore.WHITE + f'Info: Next in at {time.ctime(current_time + delay)} to exit use Ctr+C')
                 await asyncio.sleep(delay)
 
-
 asyncio.run(main_caller())
 print(Fore.WHITE + f'Info: Total runtime is {round(time.perf_counter() - runtime_start, 3)}s')
 
-# TODO: add fast mode is atumatically off during change of season
-# TODO: store files in tomel 
 # TODO: add course name for veiowng
-# TODO: add full scan
-# TODO: add choose   
+# TODO: fix grades info old and new
+# TODO: better formating of grades infor and year and name etc....
+
+# TODO: add full scan option with seprate toml
+
+# TODO: remove unwanted improts
+# TODO: test everything
+
+
 # TODO: use both md5 hash and sha 256
+
+# TODO: add choose
 # TODO: add check updates
