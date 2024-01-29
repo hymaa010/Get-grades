@@ -235,29 +235,23 @@ async def get_urls(session, email, password): #, use_backup_links):
 
     global mode_name
 
-       #!!! TDOD 
-    #if (mode_name != 'duration' and nGotgrades != 1) or not os.path.isfile(links_name):
     urls = {}
     soup = BeautifulSoup(await get_html(session, ENG_URLs["Mycourses"], email, password), 'lxml')
-    allas = soup.select('div.card-header > a')
-    for a in allas:
-        urls[a.text.split(':')[0] + ' ' + a.text.split('(')[-1].replace(')', '')] = a.attrs["href"] 
-
+    years = soup.select('select.form-control.form-control-lg > option')
+    years = years[1:]
+    for year in years:
+        year = year.attrs['value']
+        soup = BeautifulSoup(await get_html(session, ENG_URLs["Mycourses"] + '?years=' + year, email, password), 'lxml')
+        
+        allas = soup.select('div.card-header > a')
+        for a in allas:
+            urls[a.text] = a.attrs["href"] 
     with open(links_name, 'w') as links:
-        #print(Fore.WHITE + "Info: Using generated links")
         links.write(str(dumps(urls).encode('utf8').decode()))
-    #else:
-    #       with open(links_name, 'r') as links:
-    #            print(Fore.WHITE + "Info: Using saved links")
-    #            urls = loads(links.read())        
-            #!!! TODO: check if loads is correct not load
-
-    # print(Fore.GREEN + f'Found Courses: {list(urls.keys())}')
     return urls
 
 # uses get_html for all urls given and returns their task
 async def get_htmls(session, urls, email, password):
-    #! TODO make also previous years
     html_tasks = []
     html_tasks.append(create_task(get_html(session, ENG_URLs["Dashboard"], email, password, 'GPA')))
     for cousename, url in urls.items():
@@ -270,24 +264,52 @@ async def return_Grads_Info(Eng):
     
     Grades_info={}
     Semester = ''
-    for body in Eng:  
+    dashbard = await Eng[0]
+    ENG_soup = BeautifulSoup(dashbard[1], 'lxml')
+    widgets = ENG_soup.select('div.simple-widget')
+    Grades_info['Dashboard'] = {}
+    for widget in widgets:
+        Grades_info['Dashboard'][widget.find('p').text] = widget.find('h3').text
+
+    print(Fore.GREEN + f'Cumulative GPA: {Grades_info["Dashboard"]["Cumulative GPA"]}')
+    
+    courses_table = [['Course Name', 'All Grades']] 
+    for body in Eng[1:]:  
         body = await body
         ENG_soup = BeautifulSoup(body[1], 'lxml')
-        if body[0] == 'GPA':
-            Grades_info[body[0]] = ENG_soup.find('h3').text
-            print(Fore.GREEN + f'GPA Accumlative: {body[0]}: {Grades_info[body[0]]}')
-        else:
-            all_grades = ENG_soup.select('div.stats-widget-body > ul')
-            grades_dict = {}
-            for each_grade in all_grades:
-                pair = each_grade.select('li')
-                grades_dict[pair[0].text.replace('\r', '').replace('\n', '').replace('\t', '')] = pair[1].text.replace(' ', '')
-            Grades_info[body[0]] = grades_dict
-            if Semester  == '':
-                Semester = ' '.join(body[0].split()[-2:])
-                print(Fore.GREEN + f'Showing Term: {Semester}')
-            if Semester in body[0]:
-                print(Fore.GREEN + f'{body[0].split()[0]}: {Grades_info[body[0]]}')
+        
+        course_code = body[0].split(':')[0] 
+        course_name = ' '.join(body[0].split()[1:-2])
+        course_term = body[0].split('(')[-1].replace(')', '')
+        
+        det_table = ENG_soup.select('table.table.table-striped.m-0 > tbody > tr > td')
+        course_code = pretty_str(det_table[0].text)
+        course_name = pretty_str(det_table[1].text) 
+        course_dep = pretty_str(det_table[4].text) 
+        course_bylaw = pretty_str(det_table[5].text) 
+        course_grades_ = pretty_str(det_table[8].text) 
+        course_hours_ = pretty_str(det_table[9].text) 
+        
+        course_details = {'Code': course_code,'Name': course_name, 'Term': course_term, 'Department': course_dep, 'Bylaw': course_bylaw, 'Grades (W/O/E)': course_grades_, 'Hours (L/O/W)': course_hours_} 
+        
+        all_grades = ENG_soup.select('div.stats-widget-body > ul')
+        grades_dict = {}
+        
+        for each_grade in all_grades:
+            pair = each_grade.select('li')
+            grades_dict[pretty_str(pair[0].text)] = pretty_str(pair[1].text)
+
+        Grades_info[course_code] = {'Details': course_details, 'Grades': grades_dict}
+        
+        
+
+        if Semester  == '':
+            Semester = course_term
+            print(Fore.GREEN + f'Showing Term: {Semester}')
+        if Semester == course_term:
+            course_grade = Grades_info[course_code]['Grades']
+            courses_table.append([course_name, course_grade])
+    print(Fore.GREEN + tabulate(courses_table, headers='firstrow'))
 
     print(Fore.CYAN + 'Info: only showing current semester for more see grades_full.toml file')
     return Grades_info
@@ -299,7 +321,7 @@ async def return_Grads_Info_fast(full_grades):
     full_grades_soup = BeautifulSoup(full_grades[1], 'lxml')
     tables = full_grades_soup.select('div.card-body')
     grades = tables[-2].select('tr[style="display: none;"]')
-    courses_table = [['Course Name', 'Grade', 'Course GPA']]
+    courses_table = [['Course Name', 'Grade']]
     Semester = ''
     
     Full_grades = {}
@@ -312,12 +334,12 @@ async def return_Grads_Info_fast(full_grades):
         course_gpa = pretty_str(elements[4].text)
         course_credit = pretty_str(elements[5].text)
         
-        Full_grades[course_name] = {'Course Code': course_code, 'Course Name': course_name, 'Term': course_term, 'Grade': course_grade, 'GPA': course_gpa, 'Credit Hours': course_credit}
+        Full_grades[course_code] = {'Course Code': course_code, 'Course Name': course_name, 'Term': course_term, 'Grade': course_grade, 'GPA': course_gpa, 'Credit Hours': course_credit}
         if Semester  == '':
             Semester = course_term 
             print(Fore.GREEN + f'Showing Term: {Semester}')
         if Semester == course_term:
-            courses_table.append([course_name, course_grade, course_gpa])
+            courses_table.append([course_name, f'{course_grade} ({course_gpa})'])
     print(Fore.GREEN + tabulate(courses_table, headers='firstrow'))
 
     terms = tables[-1].select('table.table.m-0:not(table.table-sm) > tbody > tr:not(tr[style="display: none;"])')
@@ -345,8 +367,6 @@ async def store_all(Grades_info, file):
         return 
     
     file.write(dumps(Grades_info))
-# TODO: fix using old
-   # file.write(dumps(Grades_info[1]))
 
 # Fills out the form if user wants to 
 async def fill_form(Grades_info, session, email, fill_type):
@@ -375,17 +395,18 @@ async def store_and_fill(Grades_info, file, session, email, share_grade, fill_ty
                 share_grade = input(Fore.YELLOW + "Do you want to share ONLY grades NO id or password use yes or no: ").replace(' ', '')
                 share_grade = share_grade.lower()
                 if share_grade == 'yes': 
-                   # with open(user_info_name, 'r') as file:
-                   #     _ = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
-                   #     password = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
-                   #     _ = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
-                   #     mode_name = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
-                   # with open(user_info_name, 'w') as file:
-                   #     file.write(email + '\n')
-                   #     file.write(password + '\n')
-                   #     file.write(share_grade + '\n')
+                    # Wtite change
+                    with open(user_info_name, 'r') as file:
+                        _ = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
+                        password = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
+                        _ = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
+                    with open(user_info_name, 'w') as file:
+                        file.write(email + '\n')
+                        file.write(password + '\n')
+                        file.write(share_grade + '\n')
                     await fill_form(Grades_info, session, email, fill_type)
                     break
+
                 elif share_grade == 'no':
                     print(Fore.CYAN + "Info: Not sharing grade, Please share next time")
                     break
@@ -408,7 +429,6 @@ def compare_backup(file1, file2):
 # Handels tasks and orders calling of functions
 async def get_grades_full(session, file, email, password, share_grade): 
     urls = await get_urls(session, email, password)
-    # TODO: makesure awaitng htmls properly 
     htmls = await get_htmls(session, urls, email, password)
     Grades_info = await return_Grads_Info(htmls)
     await store_and_fill(Grades_info, file, session, email, share_grade, 'Fast')
@@ -449,7 +469,7 @@ async def main(session, new_info, new_mode, re_login):
     
     file_name = file_full_name if mode_name == 'full' else file_fast_name 
     backup_name = full_backup_name if mode_name == 'full' else fast_backup_name  
-#! TODO: make sure counitng is right
+    
     main_start = time.perf_counter()
     if re_login:
        await Login(session, email, password)
@@ -518,13 +538,13 @@ async def main_caller():
             except (KeyboardInterrupt, EOFError):
                 sys.exit(130)
             except Exception as e:
-                print(Fore.RED + f"failed with  run number {nGotgrades}, error is: {e} Try again")
+                print(Fore.RED + f"failed with  run number {nGotgrades}, error is: {e} \n please Try again")
                 if mode_name != 'infinty':
                     re_login = True
 
             if mode_name == 'normal' or mode_name == 'full':
                 while True:
-                    run = input(Fore.YELLOW + "Type Enter to run again or type l to re-login (if errors apear) or c for change info or m to change mode or q to quit: ").replace(' ', '')
+                    run = input(Fore.YELLOW + "Type Enter to run again or c for change info or m to change mode or q to quit: ").replace(' ', '')
                     run = run.lower()
                     if run == '':
                         new_info = False
@@ -557,15 +577,11 @@ async def main_caller():
 asyncio.run(main_caller())
 print(Fore.WHITE + f'Info: Total runtime is {round(time.perf_counter() - runtime_start, 3)}s')
 
-# TODO: add course name for veiowng
-# TODO: fix grades info old and new
-# TODO: better formating of grades infor and year and name etc.... add course hourse and other stuff
 
 # TODO: create full scan and normal scan options for google forms
 
 # TODO: remove unwanted improts
 # TODO: test everything
-
 
 
 # TODO: Update init.md
