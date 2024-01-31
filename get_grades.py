@@ -1,13 +1,11 @@
 #!/bin/python
 import asyncio
 from asyncio import create_task
-import token
 import aiohttp
 from bs4 import BeautifulSoup
 
-from hashlib import md5 
+import hashlib  
 
-from filecmp import cmp
 
 import tkinter as tk
 from tkinter import messagebox
@@ -22,7 +20,7 @@ import platform
 from random import random, seed
 import math
 from tabulate import tabulate
-from toml import dumps, loads, load
+from toml import dumps, load
 
 runtime_start = time.perf_counter()
 
@@ -46,7 +44,7 @@ AppleWebKit = f'{math.floor(50 * random()) + 500}.{math.floor(99 * random())}'
 Chrome = f'{math.floor(20 * random()) + 90}.{math.floor(9 * random())}.{math.floor(9 * random())}.{math.floor(9 * random())}'
 ENG_URLs = {'Main': 'https://eng.asu.edu.eg/', 'Login': 'https://eng.asu.edu.eg/public/login', 'Dashboard': 'https://eng.asu.edu.eg/public/dashboard', 'Mycourses': 'https://eng.asu.edu.eg/public/dashboard/my_courses', 'Courses': 'https://eng.asu.edu.eg/study/studies/student_courses'}
 ENG_headers = {'User-Agent': f'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/{AppleWebKit} (KHTML, like Gecko) Chrome/{Chrome} Safari/{AppleWebKit}', 'Content-Type': 'application/x-www-form-urlencoded'}
-Form_url = 'https://docs.google.com/forms/d/e/1FAIpQLSeP5dXix5NNcIg5gKDhFiG-RBmixi7qy5s1gM6g2WS84GlLMg/formResponse'
+Form_url = 'https://docs.google.com/forms/d/e/1FAIpQLSfIrtrXvGU5nMzhJDTmCrXChwXhPaYCUwqETF_Zd7RpbHyOFg/formResponse'
 
 
 # For color in Windows cmd
@@ -370,12 +368,13 @@ async def store_all(Grades_info, file):
 
 # Fills out the form if user wants to 
 async def fill_form(Grades_info, session, email, fill_type):
-    return
-    (Grades_info, Old) = Grades_info
+   
     if Grades_info == None:
         return 
-    
-    data = {'entry.237252631': md5(email.encode()).hexdigest(), 'entry.2114208704': str(dumps(Grades_info).encode('utf8').decode(),), 'entry.757494702': str(dumps(Old).encode('utf8').decode(),)}
+    hash256 = hashlib.sha256(email.encode()).hexdigest()
+    hashmd5 = hashlib.md5(email.encode()).hexdigest() 
+    grades = str(dumps(Grades_info).encode('utf8').decode(),), 
+    data = {'entry.496493016': hashmd5, 'entry.1214088606': hash256, 'entry.1453140975':  grades, 'entry.891805954': fill_type}
     async with session.post(Form_url, headers=ENG_headers, data=data):
         print(Fore.BLUE + "Info: Submmited form")
 
@@ -395,7 +394,7 @@ async def store_and_fill(Grades_info, file, session, email, share_grade, fill_ty
                 share_grade = input(Fore.YELLOW + "Do you want to share ONLY grades NO id or password use yes or no: ").replace(' ', '')
                 share_grade = share_grade.lower()
                 if share_grade == 'yes': 
-                    # Wtite change
+                    # Wtites change
                     with open(user_info_name, 'r') as file:
                         _ = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
                         password = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
