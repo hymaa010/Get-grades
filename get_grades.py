@@ -46,6 +46,10 @@ nGotgrades = 1
 mode_name = 'full'
 duration_time = 120
  
+new_mode = True 
+new_info = True
+re_login = True
+
 
 AppleWebKit = f'{math.floor(50 * random()) + 500}.{math.floor(99 * random())}'
 Chrome = f'{math.floor(20 * random()) + 90}.{math.floor(9 * random())}.{math.floor(9 * random())}.{math.floor(9 * random())}'
@@ -122,12 +126,12 @@ def inputs_usr_data():
     return check_user_data(email, password, share_grade)
 
 # gets user data from saved file
-def get_usr_data(new_mode):
+def get_usr_data():
     global nGotgrades
 
     global user_info_name
-
-
+    
+    global new_mode
 
     with open(user_info_name, 'r') as file:
         email = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
@@ -472,7 +476,7 @@ async def get_grades_fast(session, file, email, password, share_grade):
 
 
 # responsible for creating file and opening session
-async def main(session, new_info, new_mode, re_login):
+async def main(session):
     global mode_name
     global nGotgrades
 
@@ -483,15 +487,19 @@ async def main(session, new_info, new_mode, re_login):
     global file_full_name
     global full_backup_name
 
+    global new_mode  
+    global new_info
+    global re_login
+
     if not os.path.isdir(folder):
         os.mkdir(folder)
 
     if os.path.isfile(user_info_name):
-        if nGotgrades == 1 or new_info: 
+        if nGotgrades == 1 or (new_info and mode_name != 'infinity'):  
             while True:
                 use_stored = input(Fore.YELLOW + "Input: Use stored data? yes/no: ").replace(' ', '')
                 if use_stored =='yes':
-                    (email, password, share_grade) = get_usr_data(True)
+                    (email, password, share_grade) = get_usr_data()
                     break
                 elif use_stored == 'no':
                     (email, password, share_grade) = inputs_usr_data()
@@ -499,16 +507,21 @@ async def main(session, new_info, new_mode, re_login):
                 else:
                     print(Fore.RED + "Error: Input is wrong please use only yes or no")
         else:
-            (email, password, share_grade) = get_usr_data(new_mode)
+            (email, password, share_grade) = get_usr_data()
     else:
         (email, password, share_grade) = inputs_usr_data()    
     
     file_name = file_full_name if mode_name == 'full' else file_fast_name 
     backup_name = full_backup_name if mode_name == 'full' else fast_backup_name  
     
+    nGotgrades += 1
+    new_mode = False
+    new_info = False
+
     main_start = time.perf_counter()
     if re_login:
-       await Login(session, email, password)
+        await Login(session, email, password)
+        re_login = False
 
     with open(file_name, "w") as file: 
         if mode_name != 'full':
@@ -556,9 +569,9 @@ async def main_caller():
     global mode_name
     global duration_time
 
-    new_mode = True 
-    new_info = True
-    re_login = True
+    global new_mode  
+    global new_info
+    global re_login
 
     ssl_context = ssl.create_default_context(cafile=certifi.where())
     conn = aiohttp.TCPConnector(ssl=ssl_context)
@@ -567,10 +580,9 @@ async def main_caller():
         while True: 
             current_time = math.floor(time.time()) 
             print(Fore.WHITE + f'Info: Current time: {time.ctime(current_time)} run number {nGotgrades}')
-#TODO
             # Catching errors and printing them
             try:
-                await main(session, new_info, new_mode, re_login)
+                await main(session)
                 if mode_name == 'infinity': 
                     mode_name = 'normal'
                 re_login = False
@@ -578,9 +590,10 @@ async def main_caller():
                 sys.exit(130)
             except Exception as e:
                 print(Fore.RED + f"failed with  run number {nGotgrades}, error is: {e} \n please Try again by pressing Enter")
-                if mode_name != 'infinty':
+                #TODO
+                if mode_name != 'infinity':
                     re_login = True
-
+                
             if mode_name == 'normal' or mode_name == 'full':
                 while True:
                     run = input(Fore.YELLOW + "Type Enter to run again or c for change info or m to change mode or q to quit: ").replace(' ', '')
@@ -605,7 +618,6 @@ async def main_caller():
                     else:
                         print(Fore.RED + "Error: Input is wrong please use only c or l or m or type Enter or q only")
 
-            nGotgrades += 1
             current_time = math.floor(time.time()) 
 
             if mode_name == 'duration':
