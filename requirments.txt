@@ -1,0 +1,14 @@
+aiohttp
+certifi
+
+lxml
+beautifulsoup4
+tabulate
+
+toml
+
+tk
+
+nuitka
+
+colorama

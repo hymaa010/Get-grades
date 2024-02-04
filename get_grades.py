@@ -569,8 +569,8 @@ async def main_caller():
             print(Fore.WHITE + f'Info: Current time: {time.ctime(current_time)} run number {nGotgrades}')
 #TODO
             # Catching errors and printing them
-            await main(session, new_info, new_mode, re_login)
             try:
+                await main(session, new_info, new_mode, re_login)
                 if mode_name == 'infinity': 
                     mode_name = 'normal'
                 re_login = False
