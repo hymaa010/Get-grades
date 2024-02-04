@@ -1,7 +1,10 @@
-#!/bin/python
 import asyncio
 from asyncio import create_task
+
 import aiohttp
+import ssl
+import certifi
+
 from bs4 import BeautifulSoup
 
 import hashlib  
@@ -25,13 +28,17 @@ from toml import dumps, load
 runtime_start = time.perf_counter()
 
 seed()
+if platform.system() == "Linux" or platform.system() == "Mac":
+    folder = './grades/'
+else:
+    folder = '.\grades\\'
 
-links_name = 'links.toml'
-file_fast_name = 'grades.toml'
-fast_backup_name = 'grades_backup.toml'
-file_full_name = 'grades_full.toml'
-full_backup_name = 'grades_full_backup.toml'
-user_info_name = 'user_info.txt'
+links_name = folder + 'links.toml'
+file_fast_name = folder + 'grades.toml'
+fast_backup_name = folder + 'grades_backup.toml'
+file_full_name = folder + 'grades_full.toml'
+full_backup_name = folder + 'grades_full_backup.toml'
+user_info_name = folder + 'user_info.txt'
 
 nLogins = 1 
 nGotgrades = 1
@@ -42,7 +49,7 @@ duration_time = 120
 
 AppleWebKit = f'{math.floor(50 * random()) + 500}.{math.floor(99 * random())}'
 Chrome = f'{math.floor(20 * random()) + 90}.{math.floor(9 * random())}.{math.floor(9 * random())}.{math.floor(9 * random())}'
-ENG_URLs = {'Main': 'https://eng.asu.edu.eg/', 'Login': 'https://eng.asu.edu.eg/public/login', 'Dashboard': 'https://eng.asu.edu.eg/public/dashboard', 'Mycourses': 'https://eng.asu.edu.eg/public/dashboard/my_courses', 'Courses': 'https://eng.asu.edu.eg/study/studies/student_courses'}
+ENG_URLs = {'Main': 'http://eng.asu.edu.eg/', 'Login': 'https://eng.asu.edu.eg/public/login', 'Dashboard': 'https://eng.asu.edu.eg/public/dashboard', 'Mycourses': 'https://eng.asu.edu.eg/public/dashboard/my_courses', 'Courses': 'https://eng.asu.edu.eg/study/studies/student_courses'}
 ENG_headers = {'User-Agent': f'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/{AppleWebKit} (KHTML, like Gecko) Chrome/{Chrome} Safari/{AppleWebKit}', 'Content-Type': 'application/x-www-form-urlencoded'}
 Form_url = 'https://docs.google.com/forms/d/e/1FAIpQLSfIrtrXvGU5nMzhJDTmCrXChwXhPaYCUwqETF_Zd7RpbHyOFg/formResponse'
 
@@ -85,11 +92,11 @@ def input_mode():
                     else:
                         print(Fore.RED + "Error: Input is wrong please only type a hole number")
                 break
-            elif mode_name == 'i':
+            elif mode_name == 'information':
                 print(Fore.CYAN + 'Full mode: fully scans all grades including midterm grades')
-                print(Fore.CYAN + 'Normal mode: during normal, time if server is working good')
+                print(Fore.CYAN + 'Normal mode: use when server is working good or a little slow')
                 print(Fore.CYAN + 'Infinity mode: during heavy server (when grades first apear on website), keeps trying until all grades are found')
-                print(Fore.CYAN + 'Duration mode: during period for expected grades, keeps requesting grades every given amount of minutes +/- ~10%%')
+                print(Fore.CYAN + 'Duration mode: during period for expected grades, keeps requesting grades every given amount of minutes +/- ~10%')
                 continue
     
     print(Fore.CYAN + f"Info: running {mode_name} mode")
@@ -200,7 +207,7 @@ async def Login(session, email, password):
         soup = BeautifulSoup(await Eng.read(), 'lxml')
         print(Fore.WHITE + f'Info: login number {nLogins} second step')
         if not soup.find('div', {'class': 'alert alert-danger'}) is None:
-            print(Fore.RED +'Error: Username or password wrong')
+            print(Fore.RED +'Error: Username or Password wrong, reopen program and don\'t use saved!')
             input(Fore.YELLOW + 'Press Enter to exit')
             sys.exit()
         
@@ -260,6 +267,8 @@ async def get_htmls(session, urls, email, password):
 # uses beautiful soup to find needed information in all urls given in the form of array of tasks and returns a dictionary containing the name and value of a grade.
 async def return_Grads_Info(Eng):
     
+    global file_full_name
+
     Grades_info={}
     Semester = ''
     dashbard = await Eng[0]
@@ -297,7 +306,7 @@ async def return_Grads_Info(Eng):
             pair = each_grade.select('li')
             grades_dict[pretty_str(pair[0].text)] = pretty_str(pair[1].text)
 
-        Grades_info[course_code] = {'Details': course_details, 'Grades': grades_dict}
+        Grades_info[course_code + ' ' + course_term] = {'Details': course_details, 'Grades': grades_dict}
         
         
 
@@ -305,39 +314,62 @@ async def return_Grads_Info(Eng):
             Semester = course_term
             print(Fore.GREEN + f'Showing Term: {Semester}')
         if Semester == course_term:
-            course_grade = Grades_info[course_code]['Grades']
+            course_grade = Grades_info[course_code + ' ' + course_term]['Grades']
             courses_table.append([course_name, course_grade])
     print(Fore.GREEN + tabulate(courses_table, headers='firstrow'))
 
-    print(Fore.CYAN + 'Info: only showing current semester for more see grades_full.toml file')
+    print(Fore.CYAN + f'Info: only showing current semester for more see {file_full_name} file')
     return Grades_info
 
 # same as return_grade_info but for Courses parasing
 async def return_Grads_Info_fast(full_grades):
-    
+    global file_fast_name
+
+
     full_grades = await full_grades
     full_grades_soup = BeautifulSoup(full_grades[1], 'lxml')
     tables = full_grades_soup.select('div.card-body')
     grades = tables[-2].select('tr[style="display: none;"]')
+
+    Semester_order = {'Spring': 0 , 'Summer': 1, 'Fall': 2}
     courses_table = [['Course Name', 'Grade']]
+    courses_table_temp = []
     Semester = ''
     
     Full_grades = {}
     for grade in grades:
-        elements = grade.select('table.table.table-sm.m-0 > tbody > tr > td')
-        course_code = pretty_str(elements[0].text)
-        course_name = pretty_str(elements[1].text)
-        course_term = pretty_str(elements[2].text)
-        course_grade = pretty_str(elements[3].text)
-        course_gpa = pretty_str(elements[4].text)
-        course_credit = pretty_str(elements[5].text)
-        
-        Full_grades[course_code] = {'Course Code': course_code, 'Course Name': course_name, 'Term': course_term, 'Grade': course_grade, 'GPA': course_gpa, 'Credit Hours': course_credit}
-        if Semester  == '':
-            Semester = course_term 
-            print(Fore.GREEN + f'Showing Term: {Semester}')
-        if Semester == course_term:
-            courses_table.append([course_name, f'{course_grade} ({course_gpa})'])
+        gras = grade.select('table.table.table-sm.m-0 > tbody > tr')
+        for gra in gras:
+            elements = gra.select('td')
+            course_code = pretty_str(elements[0].text)
+            course_name = pretty_str(elements[1].text)
+            course_term = pretty_str(elements[2].text)
+            course_grade = pretty_str(elements[3].text)
+            course_gpa = pretty_str(elements[4].text)
+            course_credit = pretty_str(elements[5].text)
+            
+            Full_grades[course_code + ' ' + course_term] = {'Course Code': course_code, 'Course Name': course_name, 'Term': course_term, 'Grade': course_grade, 'GPA': course_gpa, 'Credit Hours': course_credit}
+            if Semester  == '':
+                Semester = course_term 
+            elif Semester != course_term:
+                (sem_term, sem_year) = Semester.split()
+                sem_year = int(sem_year)
+                sem_term = Semester_order[sem_term]
+
+                (cor_term, cor_year) = course_term.split()
+                cor_year = int(cor_year)
+                cor_term = Semester_order[cor_term]
+
+                if (cor_year > sem_year) or (cor_year == sem_year and cor_term > sem_term):
+                    courses_table_temp = []
+                    Semester = course_term
+
+            if Semester == course_term:
+                courses_table_temp.append([course_name, f'{course_grade} ({course_gpa})'])
+  
+    print(Fore.GREEN + f'Showing Term: {Semester}')
+    
+    courses_table +=courses_table_temp
     print(Fore.GREEN + tabulate(courses_table, headers='firstrow'))
 
     terms = tables[-1].select('table.table.m-0:not(table.table-sm) > tbody > tr:not(tr[style="display: none;"])')
@@ -355,7 +387,7 @@ async def return_Grads_Info_fast(full_grades):
             print(Fore.GREEN + f'GPA Accumlative: {Full_grades[term_name]["Cumulative GPA / Hours"]}')
             print(Fore.GREEN + f'GPA {term_name}: {Full_grades[term_name]["Term GPA / Hours"]}')
 
-    print(Fore.CYAN + 'Info: only showing current semester for more see grades.toml file')
+    print(Fore.CYAN + f'Info: only showing current semester for more see {file_fast_name} file')
 
     return Full_grades
 
@@ -444,11 +476,16 @@ async def main(session, new_info, new_mode, re_login):
     global mode_name
     global nGotgrades
 
+    global folder
     global user_info_name
     global file_fast_name
     global backup_fast_name
     global file_full_name
     global full_backup_name
+
+    if not os.path.isdir(folder):
+        os.mkdir(folder)
+
     if os.path.isfile(user_info_name):
         if nGotgrades == 1 or new_info: 
             while True:
@@ -523,21 +560,24 @@ async def main_caller():
     new_info = True
     re_login = True
 
-    async with aiohttp.ClientSession() as session:            
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    conn = aiohttp.TCPConnector(ssl=ssl_context)
+
+    async with aiohttp.ClientSession(connector=conn) as session:            
         while True: 
             current_time = math.floor(time.time()) 
             print(Fore.WHITE + f'Info: Current time: {time.ctime(current_time)} run number {nGotgrades}')
-            
+#TODO
             # Catching errors and printing them
+            await main(session, new_info, new_mode, re_login)
             try:
-                await main(session, new_info, new_mode, re_login)
                 if mode_name == 'infinity': 
                     mode_name = 'normal'
                 re_login = False
             except (KeyboardInterrupt, EOFError):
                 sys.exit(130)
             except Exception as e:
-                print(Fore.RED + f"failed with  run number {nGotgrades}, error is: {e} \n please Try again")
+                print(Fore.RED + f"failed with  run number {nGotgrades}, error is: {e} \n please Try again by pressing Enter")
                 if mode_name != 'infinty':
                     re_login = True
 
@@ -561,7 +601,7 @@ async def main_caller():
                         new_mode = True
                         break
                     elif run == 'q':
-                        sys.exit()
+                        return
                     else:
                         print(Fore.RED + "Error: Input is wrong please use only c or l or m or type Enter or q only")
 
@@ -577,16 +617,8 @@ asyncio.run(main_caller())
 print(Fore.WHITE + f'Info: Total runtime is {round(time.perf_counter() - runtime_start, 3)}s')
 
 
-# TODO: create full scan and normal scan options for google forms
-
-# TODO: remove unwanted improts
-# TODO: test everything
-
-
 # TODO: Update init.md
-# TODO; Make string child to better remove unwanted characters
-
-# TODO: use both md5 hash and sha 256
 
 # TODO: add choose
 # TODO: add check updates
+# python.exe -m nuitka --standalone --enable-plugin=tk-inter .\get_grades.py -o Get_Grades_v5.1.exe
