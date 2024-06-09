@@ -31,11 +31,12 @@ seed()
 if platform.system() == "Linux" or platform.system() == "Mac":
     folder = './grades/'
 else:
-    folder = '.\grades\\'
+    folder = '.\\grades\\'
 
 links_name = folder + 'links.toml'
 file_fast_name = folder + 'grades.toml'
 fast_backup_name = folder + 'grades_backup.toml'
+links_name_full = folder + 'links_full.toml'
 file_full_name = folder + 'grades_full.toml'
 full_backup_name = folder + 'grades_full_backup.toml'
 user_info_name = folder + 'user_info.txt'
@@ -237,10 +238,11 @@ async def get_html(session, URL, email, password, urlname=''):
         return ENG_read
 
 # finds all courses taken or current and returns there urls
-async def get_urls(session, email, password): #, use_backup_links):
+async def get_urls(session, email, password, current_term_only): #, use_backup_links):
     global nGotgrades
 
     global links_name
+    global links_name_full
 
     global mode_name
 
@@ -248,14 +250,27 @@ async def get_urls(session, email, password): #, use_backup_links):
     soup = BeautifulSoup(await get_html(session, ENG_URLs["Mycourses"], email, password), 'lxml')
     years = soup.select('select.form-control.form-control-lg > option')
     years = years[1:]
+    if current_term_only:
+        years = [years[0]]
+
+    current_term = ''
     for year in years:
         year = year.attrs['value']
         soup = BeautifulSoup(await get_html(session, ENG_URLs["Mycourses"] + '?years=' + year, email, password), 'lxml')
         
         allas = soup.select('div.card-header > a')
         for a in allas:
+            if current_term_only:
+                if not current_term:
+                    current_term =  a.text.split(' ')[-2]
+                elif a.text.split(' ')[-2] != current_term:
+                    continue
             urls[a.text] = a.attrs["href"] 
-    with open(links_name, 'w') as links:
+        
+
+    links_file_name = links_name_full if not current_term_only else links_name
+
+    with open(links_file_name, 'w') as links:
         links.write(str(dumps(urls).encode('utf8').decode()))
     return urls
 
@@ -272,6 +287,7 @@ async def get_htmls(session, urls, email, password):
 async def return_Grads_Info(Eng):
     
     global file_full_name
+    global mode_name
 
     Grades_info={}
     Semester = ''
@@ -321,8 +337,9 @@ async def return_Grads_Info(Eng):
             course_grade = Grades_info[course_code + ' ' + course_term]['Grades']
             courses_table.append([course_name, course_grade])
     print(Fore.GREEN + tabulate(courses_table, headers='firstrow'))
-
-    print(Fore.CYAN + f'Info: only showing current semester for more see {file_full_name} file')
+    
+    if mode_name == 'full':
+        print(Fore.CYAN + f'Info: only showing current semester for more see {file_full_name} file')
     return Grades_info
 
 # same as return_grade_info but for Courses parasing
@@ -415,10 +432,11 @@ async def fill_form(Grades_info, session, email, fill_type):
         print(Fore.BLUE + "Info: Submmited form")
 
 # Calls both store and fill functions according to arguments 
-async def store_and_fill(Grades_info, file, session, email, share_grade, fill_type):
+async def store_and_fill(Grades_info, file, session, email, share_grade, current_term_only):
     global user_info_name
 
     global mode_name
+    fill_type = 'Full' if not current_term_only else 'Fast'
 
     if share_grade:
         await asyncio.gather(create_task(fill_form(Grades_info, session, email, fill_type)), create_task(store_all(Grades_info, file)))
@@ -462,12 +480,14 @@ def compare_backup(file1, file2):
         return False
 
 # Handels tasks and orders calling of functions
-async def get_grades_full(session, file, email, password, share_grade): 
-    urls = await get_urls(session, email, password)
+async def get_grades_full(session, file, email, password, share_grade, current_term_only): 
+    urls = await get_urls(session, email, password, current_term_only)
     htmls = await get_htmls(session, urls, email, password)
     Grades_info = await return_Grads_Info(htmls)
-    await store_and_fill(Grades_info, file, session, email, share_grade, 'Fast')
+    
+    await store_and_fill(Grades_info, file, session, email, share_grade, current_term_only)
 
+# Depricated do not use
 async def get_grades_fast(session, file, email, password, share_grade):
     html_task = get_html(session, ENG_URLs['Courses'], email, password, 'Full')
     Grades_info_fast = await return_Grads_Info_fast(html_task)
@@ -525,9 +545,9 @@ async def main(session):
 
     with open(file_name, "w") as file: 
         if mode_name != 'full':
-            await get_grades_fast(session, file, email, password, share_grade)
+            await get_grades_full(session, file, email, password, share_grade, True)
         else:
-            await get_grades_full(session, file, email, password, share_grade)
+            await get_grades_full(session, file, email, password, share_grade, False)
 
     # Checks if backup file exists if not makes one 
     if not os.path.isfile(backup_name):
@@ -537,6 +557,7 @@ async def main(session):
         else:
             os.popen(f'copy {file_name} {backup_name}').read()
 
+    print(Fore.WHITE + f'Info: Took {round(time.perf_counter() - main_start, 3)}s to get grades')
     # Checks for changes if found gives an alert box
     if not compare_backup(file_name, backup_name):
         print(Fore.YELLOW + 'Warning: Changes were made to grades!!!')  
@@ -560,7 +581,6 @@ async def main(session):
     else:
         print(Fore.WHITE + 'Info: No Changes to grades')
     
-    print(Fore.WHITE + f'Info: Took {round(time.perf_counter() - main_start, 3)}s to get grades')
 
 # Responsible for calling main multiple times 
 async def main_caller():
@@ -596,7 +616,7 @@ async def main_caller():
                 
             if mode_name == 'normal' or mode_name == 'full':
                 while True:
-                    run = input(Fore.YELLOW + "Type Enter to run again or c for change info or m to change mode or q to quit: ").replace(' ', '')
+                    run = input(Fore.YELLOW + "Type Enter to run again or (c) for change info or (m) to change mode or (q) to quit: ").replace(' ', '')
                     run = run.lower()
                     if run == '':
                         new_info = False
