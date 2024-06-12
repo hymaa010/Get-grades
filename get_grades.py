@@ -290,7 +290,7 @@ async def return_Grads_Info(Eng):
     global mode_name
 
     Grades_info={}
-    Semester = ''
+    current_Semester = ''
     dashbard = await Eng[0]
     ENG_soup = BeautifulSoup(dashbard[1], 'lxml')
     widgets = ENG_soup.select('div.simple-widget')
@@ -300,7 +300,7 @@ async def return_Grads_Info(Eng):
 
     print(Fore.GREEN + f'Cumulative GPA: {Grades_info["Dashboard"]["Cumulative GPA"]}')
     
-    courses_table = [['Course Name', 'All Grades']] 
+    courses_tables = {}
     for body in Eng[1:]:  
         body = await body
         ENG_soup = BeautifulSoup(body[1], 'lxml')
@@ -327,21 +327,22 @@ async def return_Grads_Info(Eng):
             grades_dict[pretty_str(pair[0].text)] = pretty_str(pair[1].text)
 
         Grades_info[course_code + ' ' + course_term] = {'Details': course_details, 'Grades': grades_dict}
-        
-        
+        course_grade = Grades_info[course_code + ' ' + course_term]['Grades']
 
-        if Semester  == '':
-            Semester = course_term
-            print(Fore.GREEN + f'Showing Term: {Semester}')
-        if Semester == course_term:
-            course_grade = Grades_info[course_code + ' ' + course_term]['Grades']
-            courses_table.append([course_name, course_grade])
-    print(Fore.GREEN + tabulate(courses_table, headers='firstrow'))
+        if current_Semester != course_term:
+            current_Semester = course_term
+            courses_tables[current_Semester] = [['Course Name', current_Semester]]
+
+        courses_tables[current_Semester].append([course_name, course_grade])
+   
+    for courses_table in courses_tables.values():
+        print()
+        print(Fore.GREEN + tabulate(courses_table, headers='firstrow'))
+
     
-    if mode_name == 'full':
-        print(Fore.CYAN + f'Info: only showing current semester for more see {file_full_name} file')
     return Grades_info
 
+# DEPRECATED
 # same as return_grade_info but for Courses parasing
 async def return_Grads_Info_fast(full_grades):
     global file_fast_name
@@ -389,7 +390,6 @@ async def return_Grads_Info_fast(full_grades):
                 courses_table_temp.append([course_name, f'{course_grade} ({course_gpa})'])
   
     print(Fore.GREEN + f'Showing Term: {Semester}')
-    
     courses_table +=courses_table_temp
     print(Fore.GREEN + tabulate(courses_table, headers='firstrow'))
 
@@ -407,8 +407,6 @@ async def return_Grads_Info_fast(full_grades):
         if Semester == term_name:
             print(Fore.GREEN + f'GPA Accumlative: {Full_grades[term_name]["Cumulative GPA / Hours"]}')
             print(Fore.GREEN + f'GPA {term_name}: {Full_grades[term_name]["Term GPA / Hours"]}')
-
-    print(Fore.CYAN + f'Info: only showing current semester for more see {file_fast_name} file')
 
     return Full_grades
 
