@@ -18,6 +18,7 @@ from colorama import Fore
 import time 
 import sys
 import os
+from datetime import datetime
 
 import platform
 from random import random, seed
@@ -234,6 +235,7 @@ async def get_html(session, URL, email, password, urlname=''):
 # Parase grades
 async def parase_grades(body): 
     body = await body
+    
     ENG_soup = BeautifulSoup(body[1], 'lxml')
     course_code = body[0].split(':')[0] 
     course_name = ' '.join(body[0].split()[1:-2])
@@ -269,6 +271,8 @@ async def get_urls(session, email, password, current_term_only): #, use_backup_l
 
     global mode_name
 
+    links_file_name = links_name_full if not current_term_only else links_name
+
     urls = {}
     soup = BeautifulSoup(await get_html(session, ENG_URLs["Mycourses"], email, password), 'lxml')
     years = soup.select('select.form-control.form-control-lg > option')
@@ -291,11 +295,9 @@ async def get_urls(session, email, password, current_term_only): #, use_backup_l
             urls[a.text] = a.attrs["href"] 
 
 
-    links_file_name = links_name_full if not current_term_only else links_name
-
     with open(links_file_name, 'w') as links:
-        links.write(str(dumps(urls).encode('utf8').decode()))
-
+        links.write(dumps(urls))
+    
     return urls
 
 # uses get_html for all urls given and returns their task
@@ -311,6 +313,7 @@ async def get_htmls(session, urls, email, password):
 async def get_GPA(to_print, Grades_info, Eng):
 
     dashbard = await Eng[0]
+    
     ENG_soup = BeautifulSoup(dashbard[1], 'lxml')
     widgets = ENG_soup.select('div.simple-widget')
     Grades_info['Dashboard'] = {}
