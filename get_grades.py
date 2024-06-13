@@ -227,10 +227,7 @@ async def get_html(session, URL, email, password, urlname=''):
             print(Fore.WHITE +   f'Info: redirecting {URL} to {Eng.headers["Location"]}')
             return await get_html(session, Eng.headers["Location"], email, password, Eng.headers["Location"])
 
-    if urlname != '':
-        return (urlname, ENG_read)
-    else:
-        return ENG_read
+    return (urlname, ENG_read)
 
 # Parase grades
 async def parase_grades(body): 
@@ -273,8 +270,25 @@ async def get_urls(session, email, password, current_term_only): #, use_backup_l
 
     links_file_name = links_name_full if not current_term_only else links_name
 
+
+
+    if os.path.isfile(links_file_name):
+        with open(links_file_name, 'r') as links:
+            urls = load(links)
+            if 'Time' in urls.keys():
+                diff_time = datetime.now() - urls['Time']
+                
+                if diff_time.days < 15:
+                
+                    print(Fore.WHITE + f"Info: using backed up links from {diff_time.days} days ago")
+                    urls.pop('Time')
+
+                    return urls
+
     urls = {}
-    soup = BeautifulSoup(await get_html(session, ENG_URLs["Mycourses"], email, password), 'lxml')
+    urls['Time']=datetime.now()
+
+    soup = BeautifulSoup((await get_html(session, ENG_URLs["Mycourses"], email, password))[1], 'lxml')
     years = soup.select('select.form-control.form-control-lg > option')
     years = years[1:]
     if current_term_only:
@@ -283,7 +297,7 @@ async def get_urls(session, email, password, current_term_only): #, use_backup_l
     current_term = ''
     for year in years:
         year = year.attrs['value']
-        soup = BeautifulSoup(await get_html(session, ENG_URLs["Mycourses"] + '?years=' + year, email, password), 'lxml')
+        soup = BeautifulSoup((await get_html(session, ENG_URLs["Mycourses"] + '?years=' + year, email, password))[1], 'lxml')
 
         allas = soup.select('div.card-header > a')
         for a in allas:
@@ -297,6 +311,8 @@ async def get_urls(session, email, password, current_term_only): #, use_backup_l
 
     with open(links_file_name, 'w') as links:
         links.write(dumps(urls))
+        
+    urls.pop('Time')
     
     return urls
 
@@ -622,7 +638,7 @@ async def main_caller():
 
             if mode_name == 'duration':
                 delay = math.floor(60 * duration_time * (1 + (0.5 - random()) * 0.2))
-                print(Fore.WHITE + f'Info: Next in at {time.ctime(current_time + delay)} to exit use Ctr+C')
+                print(Fore.WHITE + f'\nInfo: Next in at {time.ctime(current_time + delay)} to exit use Ctr+C')
                 await asyncio.sleep(delay)
 
 asyncio.run(main_caller())
@@ -632,6 +648,7 @@ print(Fore.WHITE + f'Info: Total runtime is {round(time.perf_counter() - runtime
 # TODO: Update init.md
 
 # TODO: add check updates
-# TODO: add links and links_update
+# TODO: add links
+# TODO: add maker for pdfs
 
 # python.exe -m nuitka --standalone --enable-plugin=tk-inter .\get_grades.py -o Get_Grades_v5.1.exe
