@@ -88,14 +88,13 @@ def input_mode():
             break
         elif mode_name == 'duration':
             while True:
-                duration_time = input(Fore.YELLOW + 'Type number of minutes +/- ~10%% betweern every duration: ').replace(' ', '')
-                if duration_time.isdecimal():
-                    duration_time = int(duration_time)
+                try: 
+                    duration_time = int(input(Fore.YELLOW + 'Type number of minutes +/- ~10%% betweern every duration: ').replace(' ', ''))
                     if duration_time < 10:                            
                         print(Fore.RED + "Error: Minmum duration is 10 min")
                         continue
                     break
-                else:
+                except ValueError:
                     print(Fore.RED + "Error: Input is wrong please only type a hole number")
             break
         elif mode_name == 'information':
@@ -200,7 +199,7 @@ async def Login(session, email, password):
     async with session.get(ENG_URLs["Login"], headers=ENG_headers) as Eng:
         soup = BeautifulSoup(await Eng.read(), 'lxml')
         print(Fore.WHITE + f'Info: login number {nLogins} first step')
-        login_params["_token"] = soup.find('input', {'name': '_token'})["value"]
+        login_params["_token"] = soup.select('input[name="_token"]',limit=1)[0]["value"]
 
     # Posts for actual login 
     async with session.post(ENG_URLs["Login"], headers=ENG_headers, data=login_params) as Eng:
@@ -260,7 +259,7 @@ async def parase_grades(body):
     return course
 
 # Finds all courses taken or current and returns there urls
-async def get_urls(session, email, password, current_term_only): #, use_backup_links):
+async def get_urls(session, email, password, current_term_only):
     global nGotgrades
 
     global links_name
@@ -335,7 +334,7 @@ async def get_GPA(to_print, Grades_info, Eng):
     Grades_info['Dashboard'] = {}
     
     for widget in widgets:
-        Grades_info['Dashboard'][widget.find('p').text] = widget.find('h3').text
+        Grades_info['Dashboard'][widget.select('p', limit=1)[0].text] = widget.select('h3', limit=1)[0].text
     
     GPA = Grades_info["Dashboard"]["Cumulative GPA"]
 
@@ -567,7 +566,7 @@ async def main(session):
             message = "Grades Are Out"
 
             # display a message box; execution will stop here until user acknowledges
-            ctypes.windll.user32.MessageBox(None, message, windowTitle, MB_ICONWARNING)
+            getattr(ctypes, "windll").user32.MessageBox(None, message, windowTitle, MB_ICONWARNING)
 
 
         while True:
