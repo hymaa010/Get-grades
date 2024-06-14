@@ -7,29 +7,27 @@ import certifi
 
 from bs4 import BeautifulSoup
 
+import ctypes
+
 import hashlib  
 
-
-import tkinter as tk
-from tkinter import messagebox
 import colorama
 from colorama import Fore 
 
+from datetime import datetime
 import time 
 import sys
 import os
-from datetime import datetime
 
-import platform
+from platform import system
 from random import random, seed
-import math
 from tabulate import tabulate
 from toml import dumps, load
 
 runtime_start = time.perf_counter()
 
 seed()
-if platform.system() == "Linux" or platform.system() == "Mac":
+if system() == "Linux" or system() == "Mac":
     folder = './grades/'
 else:
     folder = '.\\grades\\'
@@ -53,19 +51,21 @@ new_info = True
 re_login = True
 
 
-AppleWebKit = f'{math.floor(50 * random()) + 500}.{math.floor(99 * random())}'
-Chrome = f'{math.floor(20 * random()) + 90}.{math.floor(9 * random())}.{math.floor(9 * random())}.{math.floor(9 * random())}'
+def floor(x):
+    return x // 1
+
+AppleWebKit = f'{floor(50 * random()) + 500}.{floor(99 * random())}'
+Chrome = f'{floor(20 * random()) + 90}.{floor(9 * random())}.{floor(9 * random())}.{floor(9 * random())}'
 ENG_URLs = {'Main': 'http://eng.asu.edu.eg/', 'Login': 'https://eng.asu.edu.eg/public/login', 'Dashboard': 'https://eng.asu.edu.eg/public/dashboard', 'Mycourses': 'https://eng.asu.edu.eg/public/dashboard/my_courses', 'Courses': 'https://eng.asu.edu.eg/study/studies/student_courses'}
 ENG_headers = {'User-Agent': f'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/{AppleWebKit} (KHTML, like Gecko) Chrome/{Chrome} Safari/{AppleWebKit}', 'Content-Type': 'application/x-www-form-urlencoded'}
 Form_url = 'https://docs.google.com/forms/d/e/1FAIpQLSfIrtrXvGU5nMzhJDTmCrXChwXhPaYCUwqETF_Zd7RpbHyOFg/formResponse'
 
 
 # For color in Windows cmd
-if platform.system() == 'Windows':
+if system() == 'Windows':
     colorama.init(convert=True)
 
-
-
+    
 def pretty_str(string):
     return ' '.join(string.replace('\r', '').replace('\n', '').replace('\t', '').split())
 
@@ -546,7 +546,7 @@ async def main(session):
     # Checks if backup file exists if not makes one 
     if not os.path.isfile(backup_name):
         print(Fore.WHITE + 'Info: Creating backup for grades')
-        if platform.system() == "Linux" or platform.system() == "Mac":
+        if system() == "Linux" or system() == "Mac":
             os.popen(f'cp {file_name} {backup_name}').read()
         else:
             os.popen(f'copy {file_name} {backup_name}').read()
@@ -555,14 +555,26 @@ async def main(session):
     # Checks for changes if found gives an alert box
     if not compare_backup(file_name, backup_name):
         print(Fore.YELLOW + 'Warning: Changes were made to grades!!!')  
-        root = tk.Tk()
-        root.withdraw()
-        messagebox.showwarning('New Grades', 'Check out changes!')
+    
+        # Only supported in Gnome
+        if system() == "Linux":
+            os.system('zenity --warning --text="Grades Are Out" --title="Changes To Grades" --ok-label="OK"')
+        
+        # TODO: test following on windows
+        elif not system == "Mac":
+            MB_ICONWARNING = 0x00000030
+            windowTitle = "Changes To Grades"
+            message = "Grades Are Out"
+
+            # display a message box; execution will stop here until user acknowledges
+            ctypes.windll.user32.MessageBox(None, message, windowTitle, MB_ICONWARNING)
+
+
         while True:
             renew_grades = input(Fore.YELLOW + "Do you want to update saved grade_backup yes/no: ").replace(' ', '')
             if renew_grades == 'yes':
                 print(Fore.WHITE + 'Info: Creating backup for grades')
-                if platform.system() == "Linux" or platform.system() == "Mac":
+                if system() == "Linux" or system() == "Mac":
                     os.popen(f'cp {file_name} {backup_name}').read()
                 else:
                     os.popen(f'copy {file_name} {backup_name}').read()
@@ -592,7 +604,7 @@ async def main_caller():
 
     async with aiohttp.ClientSession(connector=conn) as session:            
         while True:
-            current_time = math.floor(time.time()) 
+            current_time = floor(time.time()) 
             print(Fore.WHITE + f'Info: Current time: {time.ctime(current_time)} run number {nGotgrades}')
             # Catching errors and printing them
             try:
@@ -634,10 +646,10 @@ async def main_caller():
                     else:
                         print(Fore.RED + "Error: Input is wrong please use only c or l or m or type Enter or q only")
 
-            current_time = math.floor(time.time()) 
+            current_time = floor(time.time()) 
 
             if mode_name == 'duration':
-                delay = math.floor(60 * duration_time * (1 + (0.5 - random()) * 0.2))
+                delay = floor(60 * duration_time * (1 + (0.5 - random()) * 0.2))
                 print(Fore.WHITE + f'\nInfo: Next in at {time.ctime(current_time + delay)} to exit use Ctr+C')
                 await asyncio.sleep(delay)
 
@@ -648,7 +660,6 @@ print(Fore.WHITE + f'Info: Total runtime is {round(time.perf_counter() - runtime
 # TODO: Update init.md
 
 # TODO: add check updates
-# TODO: add links
 # TODO: add maker for pdfs
 
-# python.exe -m nuitka --standalone --enable-plugin=tk-inter .\get_grades.py -o Get_Grades_v5.1.exe
+# python.exe -m nuitka --standalone .\get_grades.py -o Get_Grades_v5.1.exe
