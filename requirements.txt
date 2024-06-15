@@ -7,8 +7,6 @@ tabulate
 
 toml
 
-tk
-
 nuitka
 
 colorama

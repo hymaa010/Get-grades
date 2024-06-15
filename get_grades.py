@@ -509,10 +509,10 @@ async def main(session):
         if nGotgrades == 1 or (new_info and mode_name != 'infinity'):  
             while True:
                 use_stored = input(Fore.YELLOW + "Input: Use stored data? yes/no: ").replace(' ', '')
-                if use_stored =='yes':
+                if use_stored =='yes' or use_stored == 'y':
                     (email, password, share_grade) = get_usr_data()
                     break
-                elif use_stored == 'no':
+                elif use_stored == 'no' or use_stored == 'n':
                     (email, password, share_grade) = inputs_usr_data()
                     break
                 else:
@@ -561,12 +561,12 @@ async def main(session):
         
         # TODO: test following on windows
         elif not system == "Mac":
-            MB_ICONWARNING = 0x00000030
+            MB_ICONWARNING = 0x30
             windowTitle = "Changes To Grades"
             message = "Grades Are Out"
 
             # display a message box; execution will stop here until user acknowledges
-            getattr(ctypes, "windll").user32.MessageBox(None, message, windowTitle, MB_ICONWARNING)
+            getattr(ctypes, "windll").user32.MessageBoxW(None, message, windowTitle, MB_ICONWARNING)
 
 
         while True:
