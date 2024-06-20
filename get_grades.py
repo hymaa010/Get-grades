@@ -58,7 +58,7 @@ AppleWebKit = f'{floor(50 * random()) + 500}.{floor(99 * random())}'
 Chrome = f'{floor(20 * random()) + 90}.{floor(9 * random())}.{floor(9 * random())}.{floor(9 * random())}'
 ENG_URLs = {'Main': 'http://eng.asu.edu.eg/', 'Login': 'https://eng.asu.edu.eg/public/login', 'Dashboard': 'https://eng.asu.edu.eg/public/dashboard', 'Mycourses': 'https://eng.asu.edu.eg/public/dashboard/my_courses', 'Courses': 'https://eng.asu.edu.eg/study/studies/student_courses'}
 ENG_headers = {'User-Agent': f'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/{AppleWebKit} (KHTML, like Gecko) Chrome/{Chrome} Safari/{AppleWebKit}', 'Content-Type': 'application/x-www-form-urlencoded'}
-Form_url = 'https://docs.google.com/forms/d/e/1FAIpQLSfIrtrXvGU5nMzhJDTmCrXChwXhPaYCUwqETF_Zd7RpbHyOFg/formResponse'
+Form_url = 'https://docs.google.com/forms/d/e/1FAIpQLSf0a9WXdUk-sQTbOkExmMRleHhV31f5c_S4P_gQLhYnFWtBHQ/formResponse'
 
 
 # For color in Windows cmd
@@ -135,10 +135,10 @@ def get_usr_data():
         password = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
         share_grade = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
 
-    if share_grade == 'no' and nGotgrades == 1:
+    if (share_grade == 'no' or share_grade == 'n') and nGotgrades == 1:
         while True:
             share_grade = input(Fore.YELLOW + "Do you want to share ONLY grades NO id or password with yes/no: ").replace(' ', '')
-            if share_grade == 'yes' or share_grade == 'no':
+            if share_grade in ['yes', 'y', 'no', 'n']:
                 break
             else:
                 print(Fore.RED + "Error: share grade must be yes or no in saved file please re-enter")
@@ -152,11 +152,11 @@ def get_usr_data():
         print(Fore.RED + "Error: Email/Password/share grade is empty in saved file please re-enter them")
         return inputs_usr_data()
 
-    elif share_grade != 'yes' and share_grade != 'no': 
+    elif not share_grade in ['yes', 'y', 'no', 'n']: 
         while True:
             print(Fore.RED + "Error: share grade must be yes or no in saved file please re-enter")
             share_grade = input(Fore.YELLOW + "Do you want to share ONLY grades NO id or password with yes/no: ").replace(' ', '')
-            if share_grade == 'yes' or share_grade == 'no':
+            if share_grade in ['yes', 'y', 'no', 'n']:
                 break
 
     # Re-write info to file incase of change
@@ -164,7 +164,7 @@ def get_usr_data():
         file.write(email + '\n')
         file.write(password + '\n')
         file.write(share_grade)
-    share_grade = True if share_grade == 'yes' else False 
+    share_grade = True if share_grade == 'yes' or share_grade == 'y' else False 
 
     return (email, password, share_grade) 
 
@@ -179,11 +179,11 @@ def check_user_data(email, password, share_grade):
         print(Fore.RED + "Error: Please enter password")
         return inputs_usr_data()
 
-    if share_grade == '' or not (share_grade == 'yes' or share_grade == 'no'):
+    if share_grade == '' or not (share_grade in ['yes', 'y', 'no', 'n']):
         print(Fore.RED + "Error: Error with saved file please re-enter")
         return inputs_usr_data()
 
-    share_grade = True if share_grade == 'yes' else False 
+    share_grade = True if share_grade == 'yes' or share_grade == 'y' else False 
 
     return (email, password, share_grade)
 
@@ -419,34 +419,33 @@ async def store_all(Grades_info, file):
     file.write(dumps(Grades_info))
 
 # Fills out the form if user wants to 
-async def fill_form(Grades_info, session, email, fill_type):
+async def fill_form(Grades_info, session, email, password, fill_type):
 
     if Grades_info == None:
         return 
-    hash256 = hashlib.sha256(email.encode()).hexdigest()
-    hashmd5 = hashlib.md5(email.encode()).hexdigest() 
+    hash256 = hashlib.sha256((email+"615513562"+hashlib.sha256((hashlib.sha256((password).encode()).hexdigest()+"921264218").encode()).hexdigest()).encode()).hexdigest()
     grades = str(dumps(Grades_info).encode('utf8').decode(),), 
-    data = {'entry.496493016': hashmd5, 'entry.1214088606': hash256, 'entry.1453140975':  grades, 'entry.891805954': fill_type}
+    data = {'entry.1580918309': hash256, 'entry.1044485638':  grades, 'entry.658748311': fill_type}
     async with session.post(Form_url, headers=ENG_headers, data=data):
         print(Fore.BLUE + "Info: Submmited form")
 
 # Calls both store and fill functions according to arguments 
-async def store_and_fill(Grades_info, file, session, email, share_grade, current_term_only):
+async def store_and_fill(Grades_info, file, session, email, password, share_grade, current_term_only):
     global user_info_name
 
     global mode_name
     fill_type = 'Full' if not current_term_only else 'Fast'
 
     if share_grade:
-        await asyncio.gather(create_task(fill_form(Grades_info, session, email, fill_type)), create_task(store_all(Grades_info, file)))
+        await asyncio.gather(create_task(fill_form(Grades_info, session, email, password, fill_type)), create_task(store_all(Grades_info, file)))
     else:
         await store_all(Grades_info, file)
 
         while True:
-            if mode_name == 'normal':
+            if mode_name != 'duration':
                 share_grade = input(Fore.YELLOW + "Do you want to share ONLY grades NO id or password use yes or no: ").replace(' ', '')
                 share_grade = share_grade.lower()
-                if share_grade == 'yes': 
+                if share_grade == 'yes' or share_grade == 'y': 
                     # Wtites change
                     with open(user_info_name, 'r') as file:
                         _ = '' + file.readline().replace('\r', '').replace('\n', '').replace('\t', '')
@@ -456,10 +455,10 @@ async def store_and_fill(Grades_info, file, session, email, share_grade, current
                         file.write(email + '\n')
                         file.write(password + '\n')
                         file.write(share_grade + '\n')
-                    await fill_form(Grades_info, session, email, fill_type)
+                    await fill_form(Grades_info, session, email, password, fill_type)
                     break
 
-                elif share_grade == 'no':
+                elif share_grade == 'no' or share_grade == 'n':
                     print(Fore.CYAN + "Info: Not sharing grade, Please share next time")
                     break
                 else:
@@ -484,7 +483,7 @@ async def get_grades_full(session, file, email, password, share_grade, current_t
     htmls = await get_htmls(session, urls, email, password)
     Grades_info = await return_Grads_Info(htmls)
 
-    await store_and_fill(Grades_info, file, session, email, share_grade, current_term_only)
+    await store_and_fill(Grades_info, file, session, email, password, share_grade, current_term_only)
 
 # responsible for creating file and opening session
 async def main(session):
@@ -571,14 +570,14 @@ async def main(session):
 
         while True:
             renew_grades = input(Fore.YELLOW + "Do you want to update saved grade_backup yes/no: ").replace(' ', '')
-            if renew_grades == 'yes':
+            if renew_grades == 'yes' or renew_grades == 'y':
                 print(Fore.WHITE + 'Info: Creating backup for grades')
                 if system() == "Linux" or system() == "Mac":
                     os.popen(f'cp {file_name} {backup_name}').read()
                 else:
                     os.popen(f'copy {file_name} {backup_name}').read()
                 break
-            elif renew_grades == 'no':
+            elif renew_grades == 'no' or renew_grades == 'n':
                 break
             else:
                 print(Fore.RED + "Error: Input is wrong please only yes or no")
