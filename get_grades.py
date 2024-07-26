@@ -74,34 +74,33 @@ def input_mode():
 
     global mode_name
     global duration_time
-    mode_name_parase = {'f': 'full', 'i': 'infinity', 'n': 'normal', 'd': 'duration', 'inf': 'information','normal': 'normal', 'infinity': 'infinity', 'duration': 'duration', 'information': 'information', 'full': 'full'}
+    mode_name_parase = {'f': 'full', 'n': 'normal', 'd': 'duration', 'inf': 'information', 'normal': 'normal', 'duration': 'duration', 'information': 'information', 'full': 'full'}
     while True:
-        mode_name = input(Fore.YELLOW + "To select modes type what is in brackets (f)ull or (n)ormal or (i)nfinity or (d)uration or (inf) for information on each mode: ").replace(' ', '')
+        mode_name = input(Fore.YELLOW + "To select modes type what is in brackets (n)ormal or (f)ull or (d)uration or (inf) for information on each mode: ").replace(' ', '')
         mode_name = mode_name.lower()
         if not mode_name in mode_name_parase.keys():
-            print(Fore.RED + "Error: Input is wrong please only normal or infinity or duration")
+            print(Fore.RED + "Error: Input is wrong please only normal or full or duration or information")
             continue    
         else:
             mode_name = mode_name_parase[mode_name]
 
-        if mode_name in ['full', 'infinity', 'normal']:
+        if mode_name in ['full', 'normal']:
             break
         elif mode_name == 'duration':
             while True:
                 try: 
                     duration_time = int(input(Fore.YELLOW + 'Type number of minutes +/- ~10%% betweern every duration: ').replace(' ', ''))
-                    if duration_time < 10:                            
-                        print(Fore.RED + "Error: Minmum duration is 10 min")
+                    if duration_time < 1:                            
+                        print(Fore.RED + "Error: Minmum duration is 1 min")
                         continue
                     break
                 except ValueError:
                     print(Fore.RED + "Error: Input is wrong please only type a hole number")
             break
         elif mode_name == 'information':
-            print(Fore.CYAN + 'Full mode: fully scans all grades including midterm grades')
-            print(Fore.CYAN + 'Normal mode: use when server is working good or a little slow')
-            print(Fore.CYAN + 'Infinity mode: during heavy server (when grades first apear on website), keeps trying until all grades are found')
-            print(Fore.CYAN + 'Duration mode: during period for expected grades, keeps requesting grades every given amount of minutes +/- ~10%')
+            print(Fore.CYAN + 'Normal mode: Only get current semester grades')
+            print(Fore.CYAN + 'Full mode: Fully scans all grades including midterm grades')
+            print(Fore.CYAN + 'Duration mode: During period for expected grades, keeps requesting grades every given amount of minutes +/- ~10%')
             continue
 
     print(Fore.CYAN + f"Info: running {mode_name} mode")
@@ -478,11 +477,11 @@ def compare_backup(file1, file2):
         return False
 
 # Handels tasks and orders calling of functions
-async def get_grades_full(session, file, email, password, share_grade, current_term_only): 
+async def get_grades(session, file, email, password, share_grade, current_term_only): 
     urls = await get_urls(session, email, password, current_term_only)
     htmls = await get_htmls(session, urls, email, password)
     Grades_info = await return_Grads_Info(htmls)
-
+    
     await store_and_fill(Grades_info, file, session, email, password, share_grade, current_term_only)
 
 # responsible for creating file and opening session
@@ -505,7 +504,7 @@ async def main(session):
         os.mkdir(folder)
 
     if os.path.isfile(user_info_name):
-        if nGotgrades == 1 or (new_info and mode_name != 'infinity'):  
+        if nGotgrades == 1 or new_info:  
             while True:
                 use_stored = input(Fore.YELLOW + "Input: Use stored data? yes/no: ").replace(' ', '')
                 if use_stored =='yes' or use_stored == 'y':
@@ -532,15 +531,16 @@ async def main(session):
 
     main_start = time.perf_counter()
     if re_login:
+        print(Fore.WHITE + f'Info: Started Login')
         await Login(session, email, password)
         re_login = False
 
     with open(file_name, "w") as file: 
         if mode_name != 'full':
-            await get_grades_full(session, file, email, password, share_grade, True)
+            await get_grades(session, file, email, password, share_grade, True)
         else:
-            await get_grades_full(session, file, email, password, share_grade, False)
-
+            await get_grades(session, file, email, password, share_grade, False)
+    
     # Checks if backup file exists if not makes one 
     if not os.path.isfile(backup_name):
         print(Fore.WHITE + 'Info: Creating backup for grades')
@@ -607,57 +607,54 @@ async def main_caller():
             # Catching errors and printing them
             try:
                 await main(session)
-                if mode_name == 'infinity': 
-                    mode_name = 'normal'
+            
                 re_login = False
             
+                if mode_name == 'normal' or mode_name == 'full':
+                    while True:
+                        run = input(Fore.YELLOW + "Type Enter to run again or (c) for change info or (m) to change mode or (q) to quit: ").replace(' ', '')
+                        run = run.lower()
+                        if run == '':
+                            new_info = False
+                            new_mode = False
+                            break
+                        elif run == 'c':
+                            new_info = True
+                            new_mode = False
+                            break
+                        elif run == 'm':
+                            new_info = False
+                            new_mode = True
+                            break
+                        elif run == 'q':
+                            return
+                        else:
+                            print(Fore.RED + "Error: Input is wrong please use only c or l or m or type Enter or q only")
+    
+                elif mode_name == 'duration':
+                    current_time = floor(time.time()) 
+    
+                    delay = floor(60 * duration_time * (1 + (0.5 - random()) * 0.2))
+                    print(Fore.WHITE + f'\nInfo: Next in at {time.ctime(current_time + delay)} to exit use Ctr+C')
+                    await asyncio.sleep(delay)
+
             except (KeyboardInterrupt, EOFError):
                 sys.exit(130)
             
-            except Exception as e:
-                print(Fore.RED + f"failed with  run number {nGotgrades}, error is: {e} \n please Try again by pressing Enter")
-                #TODO
-                if mode_name != 'infinity':
+            except BaseException as e:
+                print(Fore.RED + f"failed with  run number {nGotgrades}, error is: {e} \n Trying again ...")
+                
+                # Randomly require re-login To avoid problems 
+                if nGotgrades % 4 == 3:
                     re_login = True
 
-            if mode_name == 'normal' or mode_name == 'full':
-                while True:
-                    run = input(Fore.YELLOW + "Type Enter to run again or (c) for change info or (m) to change mode or (q) to quit: ").replace(' ', '')
-                    run = run.lower()
-                    if run == '':
-                        new_info = False
-                        new_mode = False
-                        if nGotgrades > 3:
-                            print(Fore.RED + "Error: Too many requests wait 1 min")
-                            await asyncio.sleep(60)
-                        break
-                    elif run == 'c':
-                        new_info = True
-                        new_mode = False
-                        break
-                    elif run == 'm':
-                        new_info = False
-                        new_mode = True
-                        break
-                    elif run == 'q':
-                        return
-                    else:
-                        print(Fore.RED + "Error: Input is wrong please use only c or l or m or type Enter or q only")
-
-            current_time = floor(time.time()) 
-
-            if mode_name == 'duration':
-                delay = floor(60 * duration_time * (1 + (0.5 - random()) * 0.2))
-                print(Fore.WHITE + f'\nInfo: Next in at {time.ctime(current_time + delay)} to exit use Ctr+C')
-                await asyncio.sleep(delay)
 
 asyncio.run(main_caller())
 print(Fore.WHITE + f'Info: Total runtime is {round(time.perf_counter() - runtime_start, 3)}s')
 
-
+# TODO: remove everything when saying no on using saved data
 # TODO: Update init.md
 
 # TODO: add check updates
 # TODO: add maker for pdfs
 
-# python.exe -m nuitka --standalone .\get_grades.py -o Get_Grades_v5.1.exe
