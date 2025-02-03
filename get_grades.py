@@ -109,7 +109,7 @@ def input_mode():
 def inputs_usr_data():
     global user_info_name
 
-    email = input(Fore.YELLOW + "Input email: ").replace(' ', '')
+    email = input(Fore.YELLOW + "Input Your ID: ").replace(' ', '')+"@eng.asu.edu.eg"
     password = input(Fore.YELLOW + "Input Password: ")
     share_grade = input(Fore.YELLOW + "Do you want to share ONLY grades NO id or password with yes/no: ").replace(' ', '')
     input_mode()
